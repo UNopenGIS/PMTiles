@@ -1,3 +1,33 @@
+4.3.0
+* improve ZXY to HilbertID conversion by @ciscorn [#527]
+
+4.2.1
+* MapLibre adapter detects erroneous tileset bounds and shows console error [#508]
+
+4.1.0
+* MapLibre `Protocol` constructor takes `errorOnMissingTile` option. [#505]
+  - Use this only for parity with the overzooming behavior of ZXY tile APIs.
+
+4.0.1
+* fix iife build via esbuild configuration for fflate browser dependency
+
+4.0.0
+* remove pmtiles spec v2 support, which reduces bundle size significantly [#287]
+* use tsup for creating cjs/esm packages, which fixes typescript usage [#498]
+* re-structure files in js project to be more conventional.
+
+3.2.0
+* MapLibre `Protocol` constructor takes an options object.
+* add protocol option `metadata:boolean` that controls whether TileJSON metadata is fetched synchronously on map load. [#247]
+	* This populates the attribution field and is required for some inspector applications to work.
+
+3.1.0
+* disable brower caching if Chrome + Windows is detected in user agent to work around https://issues.chromium.org/issues/40542704 [#384, #442, #445]
+* add getTileJson to PMTiles [#239]
+
+3.0.7
+* improve ETag error message [#427]
+
 3.0.6
 * add CommonJS build fallback for NodeJS projects not using ESM.
 

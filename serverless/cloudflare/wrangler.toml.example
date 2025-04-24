@@ -1,6 +1,6 @@
 name = "pmtiles-cloudflare"
 main = "src/index.ts"
-compatibility_date = "2022-10-18"
+compatibility_date = "2024-09-02"
 minify = false
 
 r2_buckets  = [
@@ -8,5 +8,6 @@ r2_buckets  = [
 ]
 
 [vars]
-# ALLOWED_ORIGINS = "http://localhost:8000"
-# CACHE_MAX_AGE = 86400
+# change to https://example.com, etc. to limit CORS origins
+ALLOWED_ORIGINS = "*"
+# CACHE_CONTROL = "public, max-age=86400"

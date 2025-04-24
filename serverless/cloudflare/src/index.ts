@@ -6,8 +6,8 @@ import {
   ResolvedValueCache,
   Source,
   TileType,
-} from "../../../js/index";
-import { pmtiles_path, tileJSON, tile_path } from "../../shared/index";
+} from "pmtiles";
+import { pmtiles_path, tile_path } from "../../shared/index";
 
 interface Env {
   // biome-ignore lint: config name
@@ -15,7 +15,7 @@ interface Env {
   // biome-ignore lint: config name
   BUCKET: R2Bucket;
   // biome-ignore lint: config name
-  CACHE_MAX_AGE?: number;
+  CACHE_CONTROL?: string;
   // biome-ignore lint: config name
   PMTILES_PATH?: string;
   // biome-ignore lint: config name
@@ -36,7 +36,7 @@ async function nativeDecompress(
     const result = stream?.pipeThrough(new DecompressionStream("gzip"));
     return new Response(result).arrayBuffer();
   }
-  throw Error("Compression method not supported");
+  throw new Error("Compression method not supported");
 }
 
 const CACHE = new ResolvedValueCache(25, undefined, nativeDecompress);
@@ -134,8 +134,9 @@ export default {
     ) => {
       cacheableHeaders.set(
         "Cache-Control",
-        `max-age=${env.CACHE_MAX_AGE || 86400}`
+        env.CACHE_CONTROL || "public, max-age=86400"
       );
+
       const cacheable = new Response(body, {
         headers: cacheableHeaders,
         status: status,
@@ -158,14 +159,9 @@ export default {
 
       if (!tile) {
         cacheableHeaders.set("Content-Type", "application/json");
-
-        const t = tileJSON(
-          pHeader,
-          await p.getMetadata(),
-          env.PUBLIC_HOSTNAME || url.hostname,
-          name
+        const t = await p.getTileJson(
+          `https://${env.PUBLIC_HOSTNAME || url.hostname}/${name}`
         );
-
         return cacheableResponse(JSON.stringify(t), cacheableHeaders, 200);
       }
 

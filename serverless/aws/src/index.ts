@@ -11,8 +11,8 @@ import {
   ResolvedValueCache,
   Source,
   TileType,
-} from "../../../js/index";
-import { pmtiles_path, tileJSON, tile_path } from "../../shared/index";
+} from "pmtiles";
+import { pmtiles_path, tile_path } from "../../shared/index";
 
 import { createHash } from "crypto";
 import zlib from "zlib";
@@ -22,7 +22,7 @@ import {
   GetObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 
 // the region should default to the same one as the function
 const s3client = new S3Client({
@@ -42,7 +42,7 @@ async function nativeDecompress(
   if (compression === Compression.Gzip) {
     return zlib.gunzipSync(buf);
   }
-  throw Error("Compression method not supported");
+  throw new Error("Compression method not supported");
 }
 
 // Lambda needs to run with 512MB, empty function takes about 70
@@ -77,6 +77,8 @@ class S3Source implements Source {
           Range: "bytes=" + offset + "-" + (offset + length - 1),
           // biome-ignore lint: aws api
           IfMatch: etag,
+          // biome-ignore lint: aws api
+          RequestPayer: "requester",
         })
       );
     } catch (e: unknown) {
@@ -88,7 +90,7 @@ class S3Source implements Source {
 
     const arr = await resp.Body?.transformToByteArray();
 
-    if (!arr) throw Error("Failed to read S3 response body");
+    if (!arr) throw new Error("Failed to read S3 response body");
 
     return {
       data: arr.buffer,
@@ -160,7 +162,12 @@ export const handlerRaw = async (
     const header = await p.getHeader();
 
     if (!tile) {
-      if (!process.env.PUBLIC_HOSTNAME) {
+      if (
+        !(
+          process.env.PUBLIC_HOSTNAME ||
+          event.headers["x-distribution-domain-name"]
+        )
+      ) {
         return apiResp(
           501,
           "PUBLIC_HOSTNAME must be set for TileJSON",
@@ -170,13 +177,13 @@ export const handlerRaw = async (
       }
       headers["Content-Type"] = "application/json";
 
-      const t = tileJSON(
-        header,
-        await p.getMetadata(),
-        process.env.PUBLIC_HOSTNAME,
-        name
+      const t = await p.getTileJson(
+        `https://${
+          process.env.PUBLIC_HOSTNAME ||
+          event.headers["x-distribution-domain-name"] ||
+          ""
+        }/${name}`
       );
-
       return apiResp(200, JSON.stringify(t), false, headers);
     }
 
@@ -232,9 +239,9 @@ export const handlerRaw = async (
         data = tilePostprocess(data, header.tileType);
       }
 
-      headers["Cache-Control"] = `public, max-age=${
-        process.env.CACHE_MAX_AGE || 86400
-      }`;
+      headers["Cache-Control"] =
+        process.env.CACHE_CONTROL || "public, max-age=86400";
+
       headers.ETag = `"${createHash("sha256")
         .update(Buffer.from(data))
         .digest("hex")}"`;
